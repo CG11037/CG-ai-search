@@ -1,0 +1,6 @@
+# 哪些文件可以忽略
+
+.env
+__pycache__/
+*.pyc
+ai-search-venv/

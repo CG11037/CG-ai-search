@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CG AI Search</title>
+    <!-- 代码高亮样式（黑白主题） -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <style>
+        /* =============================================
+           全局 CSS 变量（黑白主题，不使用灰色）
+           深色模式：白色文字 + 透明度区分层级
+           浅色模式：黑色文字 + 透明度区分层级
+           ============================================= */
+        :root {
+            /* 深色模式（默认） */
+            --bg-primary: #0f0f0f;       /* 主背景（纯黑调） */
+            --bg-secondary: #1a1a1a;     /* 次级背景 */
+            --bg-card: #1e1e1e;          /* 卡片背景 */
+            --bg-card-hover: #252525;    /* 卡片悬停 */
+            --bg-input: #1a1a1a;         /* 输入框背景 */
+            --border-color: #333333;     /* 边框（深灰，仅用于分隔） */
+            --border-focus: #555555;     /* 聚焦边框（稍亮） */
+
+            /* 文字颜色：纯白 + 透明度，不使用灰色 */
+            --text-primary: #ffffff;               /* 主文字（完全不透明白） */
+            --text-secondary: rgba(255,255,255,0.75); /* 次级文字（白色 75% 透明） */
+            --text-tertiary: rgba(255,255,255,0.5);   /* 三级文字（白色 50% 透明） */
+
+            /* 强调色：黑白分明，这里用纯黑（深色背景下按钮可见） */
+            --accent: #ffffff;              /* 主强调色（纯白） */
+            --accent-hover: rgba(255,255,255,0.8);
+            --accent-dim: rgba(255,255,255,0.15);   /* 半透明强调 */
+
+            --success: #ffffff;
+            --warning: #ffffff;
+
+            /* 所有圆角强制为 0（直角风格） */
+            --radius-sm: 0px;
+            --radius-md: 0px;
+            --radius-lg: 0px;
+            --radius-xl: 0px;
+            --radius-full: 0px;
+
+            --shadow-sm: none;
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+            --font-sans: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        /* 浅色模式 */
+        .light-theme {
+            --bg-primary: #f8f8f8;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f5f5f5;
+            --bg-input: #f0f0f0;
+            --border-color: #dddddd;
+            --border-focus: #aaaaaa;
+
+            /* 黑色文字 + 透明度 */
+            --text-primary: #000000;
+            --text-secondary: #000000;
+            --text-tertiary: #000000;
+
+            --accent: #000000;                /* 纯黑强调 */
+            --accent-hover: rgba(0,0,0,0.8);
+            --accent-dim: rgba(0,0,0,0.08);
+        }
+
+        /* 全局重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background var(--transition-normal), color var(--transition-normal);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            font-weight: 400;       /* 全局字体不加粗 */
+            letter-spacing: 0.2px;
+        }
+
+        #app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* =============================================
+           顶部导航栏
+           ============================================= */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            transition: all var(--transition-normal);
+        }
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        /* Logo 文字（黑白渐变，保留） */
+        .navbar-logo {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #cccccc 0%, #666666 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        /* 图标按钮（直角） */
+        .btn-icon {
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all var(--transition-fast);
+            position: relative;
+            border-radius: 0;
+        }
+        .btn-icon:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-focus);
+            color: var(--text-primary);
+        }
+        .btn-icon.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .history-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: var(--accent);
+            color: var(--bg-primary);   /* 图标上数字用背景色，确保可见 */
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        /* =============================================
+           主内容区域
+           ============================================= */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* -----------------------------------------
+           首页（搜索框在视觉中间偏上）
+           ----------------------------------------- */
+        .home-hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 18vh;      /* 搜索框位置适中 */
+            padding-left: 20px;
+            padding-right: 20px;
+            min-height: 60vh;
+        }
+        .home-hero-title {
+            font-size: 38px;
+            font-weight: 400;
+            letter-spacing: -0.8px;
+            margin-bottom: 8px;
+            text-align: center;
+            /* 黑白渐变标题 */
+            background: linear-gradient(135deg, #cccccc 0%, #666666 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        /* 浅色模式下的标题渐变不变，但可微调 */
+        .light-theme .home-hero-title {
+            background: linear-gradient(135deg, #555555 0%, #222222 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .home-hero-subtitle {
+            font-size: 14px;
+            color: var(--text-tertiary);
+            margin-bottom: 36px;
+            text-align: center;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
+        /* -----------------------------------------
+           搜索框（通用）
+           ----------------------------------------- */
+        .search-container {
+            width: 100%;
+            max-width: 600px;        /* 首页搜索框最大宽度 */
+            position: relative;
+            transition: all var(--transition-normal);
+        }
+        /* 结果页的搜索框：完全适应父容器宽度 */
+        .search-container.compact {
+            max-width: 100%;         /* 覆盖 600px 限制 */
+        }
+        .search-input-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            padding: 4px 6px 4px 14px;
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-sm);
+            gap: 6px;
+        }
+        .search-input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+        .search-input-wrapper.large {
+            padding: 8px 10px 8px 18px;
+            border-radius: 0;
+        }
+        .search-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 15px;
+            outline: none;
+            font-family: var(--font-sans);
+            letter-spacing: 0.2px;
+            min-width: 0;
+            font-weight: 400;
+        }
+        .search-input.large {
+            font-size: 16px;
+        }
+        .search-input::placeholder {
+            color: var(--text-tertiary);
+        }
+        /* 搜索按钮（强调色背景 + 文字色保证对比度） */
+        .search-btn {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background: var(--accent);
+            color: var(--bg-primary);   /* 按钮上图标用深色，确保可见 */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+            position: relative;
+            border-radius: 0;
+        }
+        .search-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.04);
+        }
+        .search-btn:active {
+            transform: scale(0.96);
+        }
+        .search-btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        /* 加载旋转动画 */
+        .search-btn-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(0,0,0,0.3);
+            border-top-color: var(--bg-primary);   /* 与按钮文字同色 */
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            position: absolute;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .clear-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: transparent;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all var(--transition-fast);
+            border-radius: 0;
+        }
+        .clear-btn:hover {
+            color: var(--text-primary);
+            background: var(--border-color);
+        }
+
+        /* -----------------------------------------
+           结果页面整体布局（宽度 80%）
+           ----------------------------------------- */
+        .results-page {
+            padding: 20px 24px 48px;
+            width: 70%;               /* 占据页面 80% 宽度 */
+            max-width: 80%;           /* 防止被其他限制覆盖 */
+            margin: 0 auto;
+            animation: fadeInUp 0.35s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .results-page .search-container {
+            margin-bottom: 28px;
+        }
+
+        /* -----------------------------------------
+           AI 综合回答区域
+           ----------------------------------------- */
+        .ai-answer-section {
+            background: var(--bg-card);
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-normal);
+            position: relative;
+            border-radius: 0;
+        }
+        .ai-answer-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--accent);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .ai-answer-header-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;       /* 小圆点保留圆形 */
+            margin-right: 4px;
+        }
+        .ai-answer-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: var(--text-primary);
+            font-weight: 400;
+        }
+        .ai-answer-content p { margin-bottom: 14px; }
+        .ai-answer-content h2, .ai-answer-content h3, .ai-answer-content h4 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .ai-answer-content ul, .ai-answer-content ol {
+            margin: 8px 0 14px 20px;
+        }
+        .ai-answer-content li { margin-bottom: 6px; }
+        .ai-answer-content code {
+            background: var(--bg-input);
+            padding: 2px 6px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+        }
+        .ai-answer-content pre {
+            background: #0d0d0d;
+            border: 1px solid var(--border-color);
+            padding: 14px 16px;
+            overflow-x: auto;
+            margin: 14px 0;
+            font-size: 13px;
+            line-height: 1.6;
+            border-radius: 0;
+        }
+        .ai-answer-content pre code {
+            background: none;
+            padding: 0;
+            border: none;
+        }
+        .ai-answer-content blockquote {
+            border-left: 2px solid var(--accent);
+            padding-left: 14px;
+            margin: 14px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        .ai-answer-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 14px 0;
+            font-size: 14px;
+        }
+        .ai-answer-content th, .ai-answer-content td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .ai-answer-content th {
+            background: var(--bg-input);
+            font-weight: 500;
+        }
+
+        /* 引用标记 [1] 样式 */
+        .citation-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 4px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            vertical-align: super;
+            transition: all var(--transition-fast);
+            margin: 0 1px;
+            font-family: var(--font-sans);
+            border-radius: 0;
+        }
+        .citation-link:hover {
+            background: var(--accent);
+            color: var(--bg-primary);   /* 悬停时文字变深色保证可见 */
+        }
+
+        /* 打字光标 */
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 18px;
+            background: var(--accent);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* -----------------------------------------
+           引用来源卡片
+           ----------------------------------------- */
+        .sources-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        .sources-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        .sources-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .source-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 12px;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-radius: 0;
+        }
+        .source-chip:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        .source-chip-index {
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 0;
+        }
+        .source-chip-favicon {
+            width: 14px;
+            height: 14px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        /* -----------------------------------------
+           搜索结果列表
+           ----------------------------------------- */
+        .search-results-list-section {
+            margin-top: 28px;
+        }
+        .search-results-list-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+        .result-item {
+            display: flex;
+            gap: 14px;
+            padding: 16px 14px;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid transparent;
+            margin-bottom: 2px;
+            border-radius: 0;
+        }
+        .result-item:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(0, 0, 0, 0.18);
+        }
+        .result-item-icon {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            border-radius: 0;
+            overflow: hidden;
+        }
+        .result-item-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .result-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .result-item-url {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .result-item-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 4px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .result-item-snippet {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-weight: 400;
+        }
+        .result-item-tag {
+            display: inline-block;
+            padding: 1px 6px;
+            font-size: 10px;
+            font-weight: 500;
+            margin-left: 6px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-radius: 0;
+        }
+
+        /* -----------------------------------------
+           相关问题区域
+           ----------------------------------------- */
+        .related-questions-section {
+            margin-top: 24px;
+            padding: 16px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+        }
+        .related-questions-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        .related-question-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            color: var(--text-secondary);
+            font-size: 14px;
+            border: 1px solid transparent;
+            border-radius: 0;
+        }
+        .related-question-item:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-color);
+            color: var(--accent);
+        }
+
+        /* -----------------------------------------
+           历史记录侧边栏
+           ----------------------------------------- */
+        .history-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .history-sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 380px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            z-index: 201;
+            display: flex;
+            flex-direction: column;
+            animation: slideInRight 0.25s ease;
+            box-shadow: var(--shadow-lg);
+            border-radius: 0;
+        }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .history-sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .history-sidebar-title {
+            font-weight: 500;
+            font-size: 16px;
+        }
+        .history-sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 14px;
+            color: var(--text-primary);
+            border-radius: 0;
+        }
+        .history-item:hover { background: var(--bg-card-hover); }
+        .history-item-time {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+        .history-item-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .history-item-delete {
+            opacity: 0;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            padding: 4px;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+            border-radius: 0;
+        }
+        .history-item:hover .history-item-delete { opacity: 1; }
+        .history-item-delete:hover { color: #ff4444; background: rgba(255,68,68,0.1); }
+        .history-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+
+        /* Toast 提示条 */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            font-size: 13px;
+            z-index: 300;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards;
+            box-shadow: var(--shadow-lg);
+            border-radius: 0;
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+
+        /* =============================================
+           响应式设计（手机端）
+           ============================================= */
+        @media (max-width: 768px) {
+            .home-hero-title { font-size: 28px; }
+            .home-hero-subtitle { font-size: 13px; }
+            .search-input { font-size: 14px; }
+            .search-input.large { font-size: 15px; }
+            .results-page {
+                width: 95%;          /* 小屏更宽 */
+                max-width: 95%;
+                padding: 14px 12px 32px;
+            }
+            .ai-answer-section { padding: 14px; }
+            .ai-answer-content { font-size: 14px; }
+            .history-sidebar { width: 100%; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- =============================================
+             顶部导航栏
+             ============================================= -->
+        <nav class="navbar" v-if="showNavbar">
+            <div class="navbar-left" @click="goHome">
+                <!-- 简约线条放大镜图标 -->
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span class="navbar-logo">CG AI Search</span>
+            </div>
+            <div class="navbar-actions">
+                <!-- 浅色/深色模式切换 -->
+                <button class="btn-icon" :class="{ active: isLightTheme }" @click="toggleTheme" :title="isLightTheme ? '浅色模式' : '深色模式'">
+                    <template v-if="isLightTheme">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </template>
+                    <template v-else>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </template>
+                </button>
+                <!-- 历史记录按钮 -->
+                <button class="btn-icon" @click="showHistory = !showHistory" title="搜索历史">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="history-badge" v-if="searchHistory.length > 0">{{ searchHistory.length > 99 ? '99+' : searchHistory.length }}</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- =============================================
+             历史记录侧边栏
+             ============================================= -->
+        <div v-if="showHistory" class="history-overlay" @click="showHistory = false"></div>
+        <div v-if="showHistory" class="history-sidebar">
+            <div class="history-sidebar-header">
+                <span class="history-sidebar-title">搜索历史</span>
+                <button class="btn-icon" @click="clearAllHistory" title="清除全部" v-if="searchHistory.length > 0" style="border:none;">🗑️</button>
+            </div>
+            <div class="history-sidebar-list">
+                <div v-if="searchHistory.length === 0" class="history-empty">暂无搜索历史</div>
+                <div v-for="(item, idx) in searchHistory" :key="idx" class="history-item" @click="searchFromHistory(item.query)">
+                    <span class="history-item-time">{{ item.time }}</span>
+                    <span class="history-item-text">{{ item.query }}</span>
+                    <span class="history-item-delete" @click.stop="deleteHistoryItem(idx)" title="删除">✕</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- =============================================
+             主内容区域
+             ============================================= -->
+        <div class="main-content">
+            <!-- 首页视图（无结果） -->
+            <div v-if="!hasResults && !isSearching" class="home-hero">
+                <h1 class="home-hero-title">探索知识的边界</h1>
+                <p class="home-hero-subtitle">AI 驱动的智能搜索，获取深度分析与实时信息</p>
+                <div class="search-container">
+                    <div class="search-input-wrapper large">
+                        <input type="text" class="search-input large" v-model="searchQuery" placeholder="Ai来回答你的问题..." @keydown.enter="startSearch" ref="searchInputRef" autofocus>
+                        <button v-if="searchQuery.length > 0" class="clear-btn" @click="searchQuery = ''; $refs.searchInputRef.focus()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                        <button class="search-btn" @click="startSearch" :disabled="!searchQuery.trim()">
+                            <span v-if="!isSearching">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            </span>
+                            <span v-else class="search-btn-spinner"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结果页视图 -->
+            <div v-if="hasResults || isSearching" class="results-page">
+                <div class="search-container compact">
+                    <div class="search-input-wrapper">
+                        <input type="text" class="search-input" v-model="searchQuery" placeholder="继续提问..." @keydown.enter="startSearch" ref="searchInputRefResults">
+                        <button v-if="searchQuery.length > 0 && searchQuery !== currentSearchQuery" class="clear-btn" @click="searchQuery = ''">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                        <button class="search-btn" :class="{ loading: isSearching }" @click="startSearch" :disabled="!searchQuery.trim() || isSearching">
+                            <span v-if="!isSearching">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            </span>
+                            <span v-else class="search-btn-spinner"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- AI 综合回答 -->
+                <div class="ai-answer-section" v-if="aiAnswer || isStreaming">
+                    <div class="ai-answer-header">
+                        <span class="ai-answer-header-dot" v-if="isStreaming"></span>
+                        <span>AI 综合回答</span>
+                        <span style="font-size:11px;color:var(--text-tertiary);font-weight:400;" v-if="isStreaming">生成中...</span>
+                    </div>
+                    <div class="ai-answer-content" v-html="renderedAnswer"></div>
+                    <span class="typing-cursor" v-if="isStreaming"></span>
+
+                    <div class="sources-section" v-if="activeSources.length > 0">
+                        <div class="sources-title">引用来源</div>
+                        <div class="sources-grid">
+                            <a v-for="src in activeSources" :key="src.index" :href="src.url" target="_blank" rel="noopener" class="source-chip" :title="src.title">
+                                <span class="source-chip-index">{{ src.index }}</span>
+                                <img v-if="src.favicon" :src="src.favicon" class="source-chip-favicon" @error="$event.target.style.display='none'">
+                                <span class="source-chip-text">{{ src.title }}</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索结果列表 -->
+                <div class="search-results-list-section" v-if="allSearchResults.length > 0">
+                    <div class="search-results-list-title">搜索结果 ({{ allSearchResults.length }})</div>
+                    <a v-for="(result, idx) in allSearchResults" :key="idx" :href="result.url" target="_blank" rel="noopener" class="result-item">
+                        <div class="result-item-icon">
+                            <img v-if="result.favicon" :src="result.favicon" @error="$event.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;">
+                            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <div class="result-item-content">
+                            <div class="result-item-url">{{ getHostname(result.url) }}</div>
+                            <div class="result-item-title">
+                                {{ result.title }}
+                                <span class="result-item-tag" v-if="isSourceCited(result)" title="AI 已引用">已引用</span>
+                            </div>
+                            <div class="result-item-snippet">{{ result.snippet || result.content }}</div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 相关问题推荐 -->
+                <div class="related-questions-section" v-if="relatedQuestions.length > 0 && !isStreaming">
+                    <div class="related-questions-title">继续探索</div>
+                    <div v-for="(q, idx) in relatedQuestions" :key="idx" class="related-question-item" @click="searchRelated(q)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; opacity:0.8;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        <span>{{ q }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" v-if="toastMsg">{{ toastMsg }}</div>
+    </div>
+
+    <!-- 外部库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+
+    <script>
+        /*
+         *  Vue 3 应用逻辑
+         *  包含搜索、SSE 流式读取、历史记录、主题切换等功能
+         */
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+        createApp({
+            setup() {
+                // -------------------- 响应式状态 --------------------
+                const searchQuery = ref('');               // 输入框内容
+                const currentSearchQuery = ref('');        // 正在搜索的词语
+                const isSearching = ref(false);            // 搜索中
+                const isStreaming = ref(false);            // 流式生成中
+                const hasResults = ref(false);              // 是否显示结果页
+                const aiAnswer = ref('');                  // AI 回答（Markdown）
+                const allSearchResults = ref([]);          // 全部搜索结果
+                const activeSources = ref([]);              // AI 引用的来源
+                const relatedQuestions = ref([]);           // 相关问题
+                const searchHistory = ref([]);              // 搜索历史
+                const showHistory = ref(false);             // 历史面板显示
+                const isLightTheme = ref(false);            // 浅色模式
+                const toastMsg = ref('');                  // Toast 消息
+                const searchInputRef = ref(null);
+                const searchInputRefResults = ref(null);
+                let toastTimer = null;
+                let streamAbortController = null;
+
+                const showNavbar = computed(() => true);  // 始终显示导航
+
+                // -------------------- 计算属性：渲染回答 --------------------
+                const renderedAnswer = computed(() => {
+                    if (!aiAnswer.value) return '';
+                    let html = aiAnswer.value;
+                    // 替换 [数字] 为引用链接
+                    html = html.replace(/\[(\d+)\]/g, (match, num) => {
+                        const src = activeSources.value.find(s => s.index === parseInt(num));
+                        if (src) {
+                            return `<a class="citation-link" href="${src.url}" target="_blank" rel="noopener" title="${escapeHtml(src.title)}">${num}</a>`;
+                        }
+                        return `<sup class="citation-link" style="opacity:0.5;">${num}</sup>`;
+                    });
+                    // Markdown 转 HTML
+                    try {
+                        if (typeof marked !== 'undefined') {
+                            marked.setOptions({ breaks: true, gfm: true });
+                            html = marked.parse(html);
+                        }
+                    } catch (e) {}
+                    // 代码高亮
+                    nextTick(() => {
+                        if (typeof hljs !== 'undefined') {
+                            document.querySelectorAll('.ai-answer-content pre code').forEach(block => {
+                                hljs.highlightElement(block);
+                            });
+                        }
+                    });
+                    return html;
+                });
+
+                // -------------------- 工具函数 --------------------
+                function escapeHtml(str) {
+                    const div = document.createElement('div');
+                    div.textContent = str;
+                    return div.innerHTML;
+                }
+                function getHostname(url) {
+                    try { return new URL(url).hostname.replace('www.', ''); } catch { return url; }
+                }
+                function getFavicon(url) {
+                    try { return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`; } catch { return ''; }
+                }
+                function isSourceCited(result) {
+                    return activeSources.value.some(s => s.url === result.url || s.title === result.title);
+                }
+                function showToast(msg) {
+                    toastMsg.value = msg;
+                    if (toastTimer) clearTimeout(toastTimer);
+                    toastTimer = setTimeout(() => { toastMsg.value = ''; }, 3000);
+                }
+                function goHome() {
+                    hasResults.value = false;
+                    isSearching.value = false;
+                    isStreaming.value = false;
+                    aiAnswer.value = '';
+                    allSearchResults.value = [];
+                    activeSources.value = [];
+                    relatedQuestions.value = [];
+                    currentSearchQuery.value = '';
+                    searchQuery.value = '';
+                    nextTick(() => { if (searchInputRef.value) searchInputRef.value.focus(); });
+                }
+
+                // -------------------- 核心搜索（SSE 流） --------------------
+                async function startSearch() {
+                    const query = searchQuery.value.trim();
+                    if (!query || isSearching.value) return;
+                    if (streamAbortController) streamAbortController.abort();
+                    streamAbortController = new AbortController();
+
+                    isSearching.value = true;
+                    isStreaming.value = true;
+                    hasResults.value = true;
+                    currentSearchQuery.value = query;
+                    aiAnswer.value = '';
+                    allSearchResults.value = [];
+                    activeSources.value = [];
+                    relatedQuestions.value = [];
+                    addToHistory(query);
+
+                    try {
+                        const response = await fetch('/api/search', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query }),
+                            signal: streamAbortController.signal,
+                        });
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({}));
+                            throw new Error(errData.detail || `请求失败 (${response.status})`);
+                        }
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const dataStr = line.slice(6).trim();
+                                    if (!dataStr) continue;
+                                    try {
+                                        const data = JSON.parse(dataStr);
+                                        handleSSEEvent(data);
+                                    } catch (e) {}
+                                }
+                            }
+                        }
+                        if (buffer.trim()) {
+                            for (const line of buffer.split('\n')) {
+                                if (line.startsWith('data: ')) {
+                                    const dataStr = line.slice(6).trim();
+                                    if (dataStr) {
+                                        try { handleSSEEvent(JSON.parse(dataStr)); } catch (e) {}
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        if (err.name !== 'AbortError') {
+                            showToast('搜索出错: ' + err.message);
+                            if (!aiAnswer.value) aiAnswer.value = '抱歉，搜索过程中出现了错误。';
+                        }
+                    } finally {
+                        isSearching.value = false;
+                        isStreaming.value = false;
+                        streamAbortController = null;
+                    }
+                }
+
+                function handleSSEEvent(data) {
+                    switch (data.type) {
+                        case 'sources':
+                            if (data.sources && Array.isArray(data.sources)) {
+                                activeSources.value = data.sources.map((s, i) => ({
+                                    index: s.index || i + 1,
+                                    title: s.title || '未知来源',
+                                    url: s.url || '#',
+                                    favicon: getFavicon(s.url || ''),
+                                    snippet: s.snippet || '',
+                                }));
+                                if (allSearchResults.value.length === 0) {
+                                    allSearchResults.value = data.sources.map((s, i) => ({
+                                        index: s.index || i + 1,
+                                        title: s.title || '未知来源',
+                                        url: s.url || '#',
+                                        snippet: s.snippet || s.content || '',
+                                        content: s.content || s.snippet || '',
+                                        favicon: getFavicon(s.url || ''),
+                                    }));
+                                }
+                            }
+                            break;
+                        case 'token':
+                            if (data.token) aiAnswer.value += data.token;
+                            break;
+                        case 'done':
+                            isStreaming.value = false;
+                            if (data.all_results && Array.isArray(data.all_results)) {
+                                allSearchResults.value = data.all_results.map((r, i) => ({
+                                    index: i + 1,
+                                    title: r.title || '未知来源',
+                                    url: r.url || '#',
+                                    snippet: r.snippet || r.content || '',
+                                    content: r.content || r.snippet || '',
+                                    favicon: getFavicon(r.url || ''),
+                                }));
+                            }
+                            break;
+                        case 'related':
+                            if (data.questions && Array.isArray(data.questions)) relatedQuestions.value = data.questions;
+                            break;
+                        case 'error':
+                            showToast('错误: ' + (data.message || '未知错误'));
+                            isStreaming.value = false;
+                            if (!aiAnswer.value) aiAnswer.value = '抱歉，处理您的请求时出现了问题。';
+                            break;
+                    }
+                }
+
+                function searchRelated(query) { searchQuery.value = query; nextTick(() => startSearch()); }
+                function searchFromHistory(query) { searchQuery.value = query; showHistory.value = false; nextTick(() => startSearch()); }
+
+                // -------------------- 历史记录管理 --------------------
+                function loadHistory() {
+                    try { searchHistory.value = JSON.parse(localStorage.getItem('cg_search_history') || '[]'); } catch { searchHistory.value = []; }
+                }
+                function saveHistory() {
+                    try { localStorage.setItem('cg_search_history', JSON.stringify(searchHistory.value.slice(0, 50))); } catch {}
+                }
+                function addToHistory(query) {
+                    searchHistory.value = searchHistory.value.filter(h => h.query !== query);
+                    const now = new Date();
+                    const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                    searchHistory.value.unshift({ query, time: timeStr });
+                    if (searchHistory.value.length > 50) searchHistory.value.pop();
+                    saveHistory();
+                }
+                function deleteHistoryItem(idx) { searchHistory.value.splice(idx, 1); saveHistory(); }
+                function clearAllHistory() { searchHistory.value = []; saveHistory(); showToast('历史记录已清除'); }
+
+                // -------------------- 主题切换 --------------------
+                function toggleTheme() {
+                    isLightTheme.value = !isLightTheme.value;
+                    document.body.classList.toggle('light-theme', isLightTheme.value);
+                    try { localStorage.setItem('cg_theme', isLightTheme.value ? 'light' : 'dark'); } catch {}
+                }
+                function loadTheme() {
+                    try { if (localStorage.getItem('cg_theme') === 'light') { isLightTheme.value = true; document.body.classList.add('light-theme'); } } catch {}
+                }
+
+                // -------------------- URL 参数处理 --------------------
+                function checkUrlParams() {
+                    const params = new URLSearchParams(window.location.search);
+                    const q = params.get('q');
+                    if (q && q.trim()) {
+                        searchQuery.value = q.trim();
+                        nextTick(() => startSearch());
+                    }
+                }
+
+                // -------------------- 键盘快捷键 --------------------
+                function handleKeydown(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        if (hasResults.value && searchInputRefResults.value) searchInputRefResults.value.focus();
+                        else if (searchInputRef.value) searchInputRef.value.focus();
+                    }
+                    if (e.key === 'Escape' && showHistory.value) showHistory.value = false;
+                }
+
+                // -------------------- 生命周期 --------------------
+                onMounted(() => {
+                    loadHistory();
+                    loadTheme();
+                    checkUrlParams();
+                    document.addEventListener('keydown', handleKeydown);
+                    if (searchInputRef.value && !hasResults.value) searchInputRef.value.focus();
+                });
+
+                watch(currentSearchQuery, (newVal) => {
+                    document.title = newVal ? `${newVal} - CG AI Search` : 'CG AI Search';
+                });
+
+                return {
+                    searchQuery, currentSearchQuery, isSearching, isStreaming, hasResults,
+                    aiAnswer, allSearchResults, activeSources, relatedQuestions,
+                    searchHistory, showHistory, isLightTheme, toastMsg,
+                    searchInputRef, searchInputRefResults, showNavbar, renderedAnswer,
+                    getHostname, isSourceCited, goHome, startSearch, searchRelated,
+                    searchFromHistory, deleteHistoryItem, clearAllHistory, toggleTheme,
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

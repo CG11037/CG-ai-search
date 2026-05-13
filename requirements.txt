@@ -1,0 +1,8 @@
+fastapi>=0.100.0
+uvicorn[standard]
+sse-starlette
+langchain
+langchain-community
+langchain-openai
+langchain-tavily
+pydantic
