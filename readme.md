@@ -26,7 +26,7 @@ AI 驱动的搜索引擎，用户用自然语言提问，系统自动联网获�
 ## 本地运行
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/CG11037/cg-ai-search.git
+git clone https://github.com/CG11037/CG-ai-search.git
 cd cg-ai-search
 
 # 2. 创建虚拟环境并激活
