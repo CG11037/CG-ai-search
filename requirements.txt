@@ -4,5 +4,5 @@ sse-starlette
 langchain
 langchain-community
 langchain-openai
-langchain-tavily
+tavily
 pydantic
