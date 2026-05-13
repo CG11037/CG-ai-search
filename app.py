@@ -17,7 +17,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 # 加载 .env 文件中的环境变量
 load_dotenv()
 
-app = FastAPI(title="Yupi AI Search API")
+app = FastAPI(title="CG AI Search API")
 
 # 跨域设置
 app.add_middleware(
